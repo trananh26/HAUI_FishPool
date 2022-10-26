@@ -14,9 +14,13 @@ namespace HAUI_FishPoolManagement
     {
        delegate void MyDelegate();    
         static SerialPort Lora_Input = new SerialPort();
+        static int Temp, Oxy, Ph, good, midle, notgood;
+       
         static void Main(string[] args)
         {
             //LoadConfig();
+            Console.OutputEncoding = Encoding.UTF8;
+            
             Console.WriteLine(ConfigurationSettings.AppSettings["TitleHello"]);
             Console.WriteLine(ConfigurationSettings.AppSettings["Help"]);
             //LoadConfig();
@@ -42,9 +46,9 @@ namespace HAUI_FishPoolManagement
                 Lora_Input.BaudRate = int.Parse(XINIFILE.ReadValue("BAURATE"));
                 Lora_Input.Open();
                 Console.WriteLine("");
-                Console.WriteLine("Comport connection is opened");
-                Console.WriteLine("Comport name: " + Lora_Input.PortName);
-                Console.WriteLine("Comport baudrate: " + Lora_Input.BaudRate.ToString());
+                Console.WriteLine(" Comport connection is opened");
+                Console.WriteLine(" Comport name: " + Lora_Input.PortName);
+                Console.WriteLine(" Comport baudrate: " + Lora_Input.BaudRate.ToString());
                 Lora_Input.DataReceived += Lora_Input_DataReceived;
             }
             catch (Exception)
@@ -81,6 +85,10 @@ namespace HAUI_FishPoolManagement
             // các thông số của sensor lấy tới 2 số thập phân sau dấu phẩy ==> Temperature 1234 = 12.34 *C
             // Nếu nhiệt độ là 2.34*C thì data là 0234
 
+            // Đưa ra giá trị ràng buộc về các chỉ số để qyết định tình trạng môi trường ao nuôi
+            // Nhiệt độ: Tốt(20 - 30 độ C), Bình thường(18 - 19,99 độ C hoặc 30,01 - 33 độ C), Cảnh báo (ngoài các vùng trên)
+            // Nồng độ oxy: Tốt(> 5 mg / l), Bình thường (3,5 - 4,99 mg / l), Cảnh báo (< 3,5 mg / l)	
+            // Độ ph: Tốt(7,5 - 8,5),  Bình thường (7 - 7,49 hoặc 8,51 - 9), Cảnh báo (goài các vùng trên)
             try
             {
                 FishpoolCommonParameter Parameter = new FishpoolCommonParameter();
@@ -93,21 +101,42 @@ namespace HAUI_FishPoolManagement
                 Parameter.Humidity = double.Parse(data.Substring(8, 2) + "." + data.Substring(10, 2));
                 Parameter.Ph = double.Parse(data.Substring(12, 2) + "." + data.Substring(14, 2));
                 Parameter.Temperature = double.Parse(data.Substring(16, 2) + "." + data.Substring(18, 2));
-                int temp = Convert.ToInt32(Parameter.Temperature);
 
-                if (temp >= 20 && temp <= 30)
-                {
-                    Parameter.Evaluation = "Tốt";
-                }
-                else if (temp < 15 || temp > 35)
-                {
-                    Parameter.Evaluation = "Cảnh báo";
-                }
+                Console.WriteLine(" Mã thiết bị: " + Parameter.DeviceID.ToString());
+                Console.WriteLine(" Nồng độ Oxy: " + Parameter.Dissolved_oxygen.ToString());
+                Console.WriteLine(" Độ ẩm: " + Parameter.Humidity.ToString());
+                Console.WriteLine(" Độ Ph: " + Parameter.Ph.ToString());
+
+                Temp = Convert.ToInt32(Parameter.Temperature);
+                Oxy = Convert.ToInt32(Parameter.Dissolved_oxygen);
+                Ph = Convert.ToInt32(Parameter.Ph);
+
+                if (Temp >= 20 && Temp <= 30)
+                    good++;
+                else if (Temp < 18 || Temp > 33)
+                    notgood++;
                 else
-                {
-                    Parameter.Evaluation = "Bình thường";
-                }
+                    midle++;
 
+                if (Oxy > 5)
+                    good++;
+                else if (Oxy < 3.5)
+                    notgood++;
+                else
+                    midle++;
+
+                if (Ph >= 7.5 && Ph <= 8.5)
+                    good++;
+                else if (Ph < 7 || Ph > 9)
+                    notgood++;
+                else
+                    midle++;
+
+                if (good == 3 || (good == 2 && midle == 1)) Parameter.Evaluation = "Tốt";
+                else if (notgood >= 1) Parameter.Evaluation = "Cảnh báo";
+                else Parameter.Evaluation = "Bình thường";
+
+                Console.WriteLine(" Mức độ môi trường: " + Parameter.Evaluation);
                 // Insert data vảo bảng lưu data tổng
                 if (BLDatabase.InsertDataMaster(Parameter))
                     Console.WriteLine("Insert Master Data Complete");
@@ -116,6 +145,7 @@ namespace HAUI_FishPoolManagement
                 if (BLDatabase.UpdateCurrentData(Parameter))
                     Console.WriteLine("Update Current Data Complete");
                 //Console.ReadKey();
+                good = 0; midle = 0; notgood = 0;
             }
             catch (Exception)
             {
