@@ -77,6 +77,7 @@ namespace HAUI_FishPoolManagement
             {
                 Console.WriteLine("Check connection of your computer com port with Lora station");
                 //Console.ReadKey();
+
             }
         }
         
