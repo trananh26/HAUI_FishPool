@@ -40,5 +40,12 @@ namespace HAUI_FishPoolManagement
             }
             
         }
+
+        internal static bool InserDataTest(FishpoolCommonParameter Parameter)
+        {
+            string stored = "Proc_InsertDataTest";
+            bool UpdateDataTest = DatabaseManagerment.UpdateCurrentData(stored, Parameter);
+            return UpdateDataTest;
+        }
     }
 }

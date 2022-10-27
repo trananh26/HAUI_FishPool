@@ -15,7 +15,7 @@ namespace HAUI_FishPoolManagement
        delegate void MyDelegate();    
         static SerialPort Lora_Input = new SerialPort();
         static int Temp, Oxy, Ph, good, midle, notgood;
-       
+        static DateTime startdate, finishDate;
         static void Main(string[] args)
         {
             //LoadConfig();
@@ -24,8 +24,30 @@ namespace HAUI_FishPoolManagement
             Console.WriteLine(ConfigurationSettings.AppSettings["TitleHello"]);
             Console.WriteLine(ConfigurationSettings.AppSettings["Help"]);
             //LoadConfig();
+            //ClientTest();
             LoadInfor();
             Console.ReadLine();
+        }
+        static string data;
+        private static void ClientTest()
+        {
+            startdate = DateTime.Now;
+            for (int i=0;i<100;i++)
+            {
+                //0001(ID)+ 1234(oxygen) + 1234(humidity) + 1234(ph) + 1234(Temperature) + x
+                Console.WriteLine("Client thứ: " + i.ToString());
+
+                data = i.ToString("0000") + "0650355008503" + i.ToString("000");
+                LoraDataAnalys(data);
+            }
+            // Thời gian kết thúc
+            finishDate = DateTime.Now;
+
+            //Tổng thời gian thực hiện 
+            TimeSpan time = finishDate - startdate;
+            Console.WriteLine("Start:= " + startdate.ToString("dd-MM-yyyy HH:mm:ss.fffffff"));
+            Console.WriteLine("Finish:= " + finishDate.ToString("dd-MM-yyyy HH:mm:ss.fffffff"));
+            Console.WriteLine("Tổng thời gian chạy:= " + time.TotalSeconds + "s");
         }
 
         private static void LoadInfor()
@@ -53,11 +75,11 @@ namespace HAUI_FishPoolManagement
             }
             catch (Exception)
             {
-                Console.WriteLine("Check connection of yuor computer com port with Lora station");
+                Console.WriteLine("Check connection of your computer com port with Lora station");
                 //Console.ReadKey();
             }
         }
-        static string data;
+        
         private static void Lora_Input_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
             try
@@ -95,6 +117,7 @@ namespace HAUI_FishPoolManagement
 
                 Parameter.Create_date = DateTime.Now;
                 Parameter.DeviceID = int.Parse(data.Substring(0, 4));
+                     
                 Guid guid = Guid.NewGuid();
                 Parameter.ID = guid.ToString();
                 Parameter.Dissolved_oxygen = double.Parse(data.Substring(4, 2) + "." + data.Substring(6, 2));
@@ -137,6 +160,25 @@ namespace HAUI_FishPoolManagement
                 else Parameter.Evaluation = "Bình thường";
 
                 Console.WriteLine(" Mức độ môi trường: " + Parameter.Evaluation);
+
+                //if (Parameter.DeviceID == 1)
+                //{
+                //    startdate = DateTime.Now;
+                //}
+                //else if (Parameter.DeviceID == 100)
+                //{
+                //    finishDate = DateTime.Now;
+                //    //Tổng thời gian thực hiện 
+                //    TimeSpan time = finishDate - startdate;
+                //    Console.WriteLine("Start:= " + startdate.ToString("dd-MM-yyyy HH:mm:ss.fffffff"));
+                //    Console.WriteLine("Finish:= " + finishDate.ToString("dd-MM-yyyy HH:mm:ss.fffffff"));
+                //    Console.WriteLine("Tổng thời gian chạy:= " + time.TotalSeconds + "s");
+                //}
+
+                //if (BLDatabase.InserDataTest(Parameter))
+                //{
+
+                //}
                 // Insert data vảo bảng lưu data tổng
                 if (BLDatabase.InsertDataMaster(Parameter))
                     Console.WriteLine("Insert Master Data Complete");
